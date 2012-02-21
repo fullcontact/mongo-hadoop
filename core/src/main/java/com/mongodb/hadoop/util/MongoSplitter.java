@@ -5,6 +5,7 @@ import com.mongodb.hadoop.*;
 import com.mongodb.hadoop.input.*;
 import org.apache.commons.logging.*;
 import org.apache.hadoop.mapreduce.*;
+import com.mongodb.ReadPreference;
 
 import java.net.UnknownHostException;
 import java.util.*;
@@ -48,6 +49,15 @@ public class MongoSplitter {
         }
 
         DB db = mongo.getDB( uri.getDatabase() );
+		
+		if (uri.getUsername() != null) {
+	        log.info("Authenticating as '" + uri.getUsername() + "', password hidden.");
+			boolean authenticated = db.authenticate(uri.getUsername(), uri.getPassword());
+			if (!authenticated) {
+				throw new IllegalStateException( "Invalid credentials ");
+			}
+		}
+
         DBCollection coll = db.getCollection( uri.getCollection() );
         final CommandResult stats = coll.getStats();
         
@@ -60,7 +70,7 @@ public class MongoSplitter {
 
         final boolean slaveOk = conf.canReadSplitsFromSecondary();
 
-        log.info(" Calculate Splits Code ... Use Shards? " + useShards + ", Use Chunks? " + useChunks + "; Collection Sharded? " + isSharded);
+        log.info(" Calculate Splits Code ... Use Shards? " + useShards + ", Use Chunks? " + useChunks + "; Collection Sharded? " + isSharded + "; Slave Ok? " + slaveOk);
         if (conf.createInputSplits()) {
             log.info( "Creation of Input Splits is enabled." );
             if (isSharded && (useShards || useChunks)){  // todo I don't think these settings can be run together
@@ -98,12 +108,20 @@ public class MongoSplitter {
                                           add( "maxChunkSize", splitSize ).get();
         
         log.trace( "Issuing Command: " + cmd );
-        CommandResult data = coll.getDB().command( cmd );
+		DB db = coll.getDB();
+		if (slaveOk) {
+			log.trace("Setting db.slaveOk().");
+			db.setReadPreference(ReadPreference.SECONDARY);
+		} else {
+			log.trace("NOT setting db.slaveOk().");
+		}
+		
+        CommandResult data = db.command( cmd );
 
         if ( data.containsField( "$err" ) )
             throw new IllegalArgumentException( "Error calculating splits: " + data );
         else if ( (Double) data.get( "ok" ) != 1.0 )
-            throw new IllegalArgumentException( "Unable to calculate input splits: " + ( (String) data.get( "errmsg" ) ) );
+            throw new IllegalArgumentException( "Unable to calculate input splits DAN: " + ( data.toString() ) );
         
         // Comes in a format where "min" and "max" are implicit and each entry is just a boundary key; not ranged
         BasicDBList splitData = (BasicDBList) data.get( "splitKeys" );

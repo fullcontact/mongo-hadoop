@@ -256,7 +256,18 @@ public class MongoConfigUtil {
 
     public static DBCollection getCollection( MongoURI uri ){
         try {
-            return uri.connectCollection( _mongos.connect( uri ) );
+			DBCollection collection = uri.connectCollection( _mongos.connect( uri ) );
+
+			if (uri.getUsername() != null && !collection.getDB().isAuthenticated()) {
+		        log.info("Authenticating as '" + uri.getUsername() + "', password hidden.");
+				boolean authenticated = collection.getDB().authenticate(uri.getUsername(), uri.getPassword());
+				if (!authenticated) {
+					throw new IllegalStateException( "Invalid credentials ");
+				}
+			}
+			
+			return collection;
+
         }
         catch ( final Exception e ) {
             throw new IllegalArgumentException( "Unable to connect to collection: " + e.getMessage(), e );

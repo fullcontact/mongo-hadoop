@@ -127,7 +127,7 @@ public class MongoInputSplit extends InputSplit implements Writable {
         _notimeout = (Boolean) spec.get( "notimeout" );
         getCursor();
 
-        log.info( "Deserialized MongoInputSplit ... { length = " + getLength() + ", locations = "
+        log.info( "Deserialized MongoInputSplit ... { mongoURI = " + _mongoURI + ", length = " + getLength() + ", locations = "
                    + Arrays.toString( getLocations() ) + ", keyField = " + _keyField + ", query = " + _querySpec
                    + ", fields = " + _fieldSpec + ", sort = " + _sortSpec + ", limit = " + _limit + ", skip = "
                    + _skip + ", noTimeout = " + _notimeout + "}" );

@@ -47,6 +47,8 @@ public class MongoInputFormat extends InputFormat<Object, BSONObject> {
     @Override
     public List<InputSplit> getSplits( JobContext context ){
         final Configuration hadoopConfiguration = context.getConfiguration();
+		LOG.debug("mongo.input.split.allow_read_from_secondaries = " + hadoopConfiguration.get("mongo.input.split.allow_read_from_secondaries"));
+		
         final MongoConfig conf = new MongoConfig( hadoopConfiguration );
         return MongoSplitter.calculateSplits( conf );
     }
